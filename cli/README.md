@@ -32,6 +32,7 @@ Usage:
   battlesnake play [flags]
 
 Flags:
+  -b  --board               Serve locally running board viewer
   -d, --delay int32         Turn Delay in Milliseconds (default 0)
   -g, --gametype string     Type of Game Rules (default "standard")
   -H, --height int32        Height of Board (default 11)
@@ -43,6 +44,7 @@ Flags:
   -t, --timeout int32       Request Timeout (default 500)
   -u, --url stringArray     URL of Snake
   -v, --viewmap             View the Map Each Turn
+  -w  --wait                Wait for snakes before starting game
   -W, --width int32         Width of Board (default 11)
 
 Global Flags:
@@ -66,6 +68,16 @@ URLs are technically optional too, but your Battlesnake will lose if the server 
 Example creating a 7x7 Standard game with two Battlesnakes:
 ```
 battlesnake play --width 7 --height 7 --name Snake1 --url http://snake1-url-whatever --name Snake2 --url http://snake2-url-whatever
+```
+
+The CLI includes a websocket server that can be used to run a local instance of the board viewer found here:
+[https://github.com/BattlesnakeOfficial/board](https://github.com/BattlesnakeOfficial/board)
+
+After the board viewer has been started with `npm start`, the CLI can be run with the `--board` option. The output will include a URL that be used to view the game in the browser. For example:
+
+```
+battlesnake play --width 7 --height 7 --board --name Snake1 --url http://snake1-url-whatever
+2021/07/13 21:12:45 View board at http://localhost:3000/?engine=http%3A%2F%2Flocalhost%3A4000&game=44a4f4e9-8ba0-488e-9e08-31288e664fed
 ```
 
 ### Sample Output

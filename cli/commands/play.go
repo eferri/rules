@@ -20,13 +20,18 @@ import (
 )
 
 type Battlesnake struct {
-	URL       string
-	Name      string
-	ID        string
-	API       string
-	LastMove  string
-	Squad     string
-	Character rune
+	URL             string
+	Name            string
+	ID              string
+	Color           string
+	Head            string
+	Tail            string
+	API             string
+	LastMove        string
+	Squad           string
+	EliminatedBy    string
+	EliminatedCause string
+	Character       rune
 }
 
 type Coord struct {
@@ -95,6 +100,7 @@ var Height int32
 var Names []string
 var URLs []string
 var Squads []string
+var Board bool
 var Timeout int32
 var Sequential bool
 var GameType string
@@ -118,6 +124,7 @@ func init() {
 	playCmd.Flags().StringArrayVarP(&Names, "name", "n", nil, "Name of Snake")
 	playCmd.Flags().StringArrayVarP(&URLs, "url", "u", nil, "URL of Snake")
 	playCmd.Flags().StringArrayVarP(&Names, "squad", "S", nil, "Squad of Snake")
+	playCmd.Flags().BoolVarP(&Board, "board", "b", false, "Serve locally running board viewer")
 	playCmd.Flags().Int32VarP(&Timeout, "timeout", "t", 500, "Request Timeout")
 	playCmd.Flags().BoolVarP(&Sequential, "sequential", "s", false, "Use Sequential Processing")
 	playCmd.Flags().StringVarP(&GameType, "gametype", "g", "standard", "Type of Game Rules")
@@ -143,6 +150,14 @@ var run = func(cmd *cobra.Command, args []string) {
 	for _, snake := range snakes {
 		Battlesnakes[snake.ID] = snake
 	}
+	var server *boardServer
+
+	if Board {
+		// Start the server, send the first frame
+		server = startBoardServer(GameType)
+		frame := stateToBoardFrame(GameType, state, outOfBounds, snakes, Turn)
+		server.frameChannel <- frame
+	}
 
 	for v := false; !v; v, _ = ruleset.IsGameOver(state) {
 		Turn++
@@ -164,6 +179,14 @@ var run = func(cmd *cobra.Command, args []string) {
 		if TurnDelay > 0 {
 			time.Sleep(time.Duration(TurnDelay) * time.Millisecond)
 		}
+		if Board {
+			frame := stateToBoardFrame(GameType, state, outOfBounds, snakes, Turn)
+			server.frameChannel <- frame
+		}
+	}
+
+	if Board {
+		server.stop()
 	}
 
 	if GameType == "solo" {
@@ -490,9 +513,24 @@ func buildSnakesFromOptions() []Battlesnake {
 				log.Fatal(jsonErr)
 			} else {
 				api = pingResponse.APIVersion
+				color = pingResponse.Color
+				head = pingResponse.Head
+				tail = pingResponse.Tail
 			}
 		}
-		snake := Battlesnake{Name: snakeName, URL: snakeURL, ID: id, API: api, LastMove: "up", Character: bodyChars[i%8]}
+
+		snake := Battlesnake{
+			Name:      snakeName,
+			URL:       snakeURL,
+			ID:        id,
+			Color:     color,
+			Head:      head,
+			Tail:      tail,
+			API:       api,
+			LastMove:  "up",
+			Character: bodyChars[i%8],
+		}
+
 		if GameType == "squad" {
 			snake.Squad = snakeSquad
 		}
