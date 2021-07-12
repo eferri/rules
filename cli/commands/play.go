@@ -101,6 +101,7 @@ var GameType string
 var ViewMap bool
 var Seed int64
 var TurnDelay int32
+var Wait bool
 
 var playCmd = &cobra.Command{
 	Use:   "play",
@@ -123,6 +124,7 @@ func init() {
 	playCmd.Flags().BoolVarP(&ViewMap, "viewmap", "v", false, "View the Map Each Turn")
 	playCmd.Flags().Int64VarP(&Seed, "seed", "r", time.Now().UTC().UnixNano(), "Random Seed")
 	playCmd.Flags().Int32VarP(&TurnDelay, "delay", "d", 0, "Turn Delay in Milliseconds")
+	playCmd.Flags().BoolVarP(&Wait, "wait", "w", false, "Wait for snakes before starting game")
 }
 
 var run = func(cmd *cobra.Command, args []string) {
@@ -460,8 +462,19 @@ func buildSnakesFromOptions() []Battlesnake {
 				snakeSquad = strconv.Itoa(i / 2)
 			}
 		}
-		res, err := HttpClient.Get(snakeURL)
+
 		api := "0"
+		color := "#736CCB"
+		head := ""
+		tail := ""
+
+		res, err := HttpClient.Get(snakeURL)
+		for Wait && err != nil {
+			log.Printf("[WARN]: Waiting for snake %v", snakeURL)
+			time.Sleep(time.Duration(500) * time.Millisecond)
+			res, err = HttpClient.Get(snakeURL)
+		}
+
 		if err != nil {
 			log.Printf("[WARN]: Request to %v failed", snakeURL)
 		} else if res.Body != nil {
