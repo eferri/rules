@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"path"
 	"strconv"
 	"sync"
@@ -24,14 +25,17 @@ import (
 
 // Used to store state for each SnakeState while running a local game
 type SnakeState struct {
-	URL       string
-	Name      string
-	ID        string
-	LastMove  string
-	Character rune
-	Color     string
-	Head      string
-	Tail      string
+	URL             string
+	Name            string
+	ID              string
+	LastMove        string
+	Character       rune
+	Color           string
+	Head            string
+	Tail            string
+	API             string
+	EliminatedBy    string
+	EliminatedCause string
 }
 
 type GameState struct {
@@ -42,6 +46,8 @@ type GameState struct {
 	URLs                []string
 	Timeout             int
 	TurnDuration        int
+	Board               bool
+	BoardAddr           string
 	Sequential          bool
 	GameType            string
 	MapName             string
@@ -82,6 +88,8 @@ func NewPlayCommand() *cobra.Command {
 	playCmd.Flags().StringArrayVarP(&gameState.Names, "name", "n", nil, "Name of Snake")
 	playCmd.Flags().StringArrayVarP(&gameState.URLs, "url", "u", nil, "URL of Snake")
 	playCmd.Flags().IntVarP(&gameState.Timeout, "timeout", "t", 500, "Request Timeout")
+	playCmd.Flags().BoolVarP(&gameState.Board, "board", "b", false, "Serve locally running board")
+	playCmd.Flags().StringVarP(&gameState.BoardAddr, "board-address", "a", ":8080", "Address to serve locally running board")
 	playCmd.Flags().BoolVarP(&gameState.Sequential, "sequential", "s", false, "Use Sequential Processing")
 	playCmd.Flags().StringVarP(&gameState.GameType, "gametype", "g", "standard", "Type of Game Rules")
 	playCmd.Flags().StringVarP(&gameState.MapName, "map", "m", "standard", "Game map to use to populate the board")
@@ -162,6 +170,14 @@ func (gameState *GameState) Run() {
 		winner:        SnakeState{},
 		isDraw:        false,
 	}
+	var server *BoardServer
+
+	if gameState.Board {
+		// Start the websocket server, send the starting board
+		server = NewBoardServer(gameState.DebugRequests)
+		server.startBoardServer(gameState.BoardAddr, gameState)
+		server.sendState(boardState, gameState.snakeStates)
+	}
 
 	if gameState.ViewMap {
 		gameState.printMap(boardState)
@@ -205,6 +221,9 @@ func (gameState *GameState) Run() {
 			time.Sleep(time.Until(endTime))
 		}
 
+		if gameState.Board {
+			server.sendState(boardState, gameState.snakeStates)
+		}
 	}
 
 	isDraw := true
@@ -245,6 +264,14 @@ func (gameState *GameState) Run() {
 			log.Printf("[WARN]: Unable to export game. Reason: %v\n", err.Error())
 			os.Exit(1)
 		}
+	}
+
+	if gameState.Board {
+		server.gameOver()
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		<-c
+		server.stop()
 	}
 }
 
@@ -467,6 +494,7 @@ func (gameState *GameState) buildSnakesFromOptions() map[string]SnakeState {
 				snakeState.Head = pingResponse.Head
 				snakeState.Tail = pingResponse.Tail
 				snakeState.Color = pingResponse.Color
+				snakeState.API = pingResponse.APIVersion
 			}
 		}
 		snakes[snakeState.ID] = snakeState

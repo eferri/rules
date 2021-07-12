@@ -45,6 +45,8 @@ Flags:
   -r, --seed int                    Random Seed (default 1649588785026867900)
   -d, --delay int                 Turn Delay in Milliseconds
   -D, --duration int              Minimum Turn Duration in Milliseconds
+  -b  --board                       Serve locally running board viewer
+  -a  --board-address               Address to serve locally running board viewer
       --debug-requests              Log body of all requests sent
   -o, --output string               File path to output game state to. Existing files will be overwritten
       --foodSpawnChance int       Percentage chance of spawning a new food every round (default 15)
@@ -74,6 +76,16 @@ URLs are technically optional too, but your Battlesnake will lose if the server 
 Example creating a 7x7 Standard game with two Battlesnakes:
 ```
 battlesnake play --width 7 --height 7 --name Snake1 --url http://snake1-url-whatever --name Snake2 --url http://snake2-url-whatever
+```
+
+The CLI includes a websocket server that can be used to run a local instance of the board viewer found here:
+[https://github.com/BattlesnakeOfficial/board](https://github.com/BattlesnakeOfficial/board)
+
+After the board viewer has been started with `npm start`, the CLI can be run with the `--board` option. The output will include a URL that be used to view the game in the browser. For example:
+
+```
+battlesnake play --width 7 --height 7 --board --name Snake1 --url http://snake1-url-whatever
+2021/07/13 21:12:45 View board at http://localhost:3000/?engine=http%3A%2F%2Flocalhost%3A4000&game=44a4f4e9-8ba0-488e-9e08-31288e664fed
 ```
 
 ### Sample Output
