@@ -23,6 +23,7 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	rootCmd.AddCommand(NewPlayCommand())
+	rootCmd.AddCommand(NewMoveCommand())
 
 	mapCommand := NewMapCommand()
 	mapCommand.AddCommand(NewMapListCommand())
